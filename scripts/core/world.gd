@@ -9,7 +9,7 @@ const COLORS := {
 Terrain.REGOLITH: Color(0.80, 0.42, 0.22),
 Terrain.DUST:     Color(0.72, 0.35, 0.18),
 Terrain.ROCK:     Color(0.45, 0.20, 0.10),
-Terrain.ICE:      Color(0.75, 0.85, 0.95),
+Terrain.ICE:      Color(0.78, 0.88, 0.98),
 }
 
 const BUILD_COST := {
@@ -28,6 +28,7 @@ Building.Kind.STORAGE: {"metal": 10.0},
 @onready var tasks: Node = get_node("../Tasks")
 
 var tiles: Dictionary = {}
+var detail: Dictionary = {}
 var selected: Vector2i = Vector2i(-1, -1)
 var selected_robot: Robot = null
 var build_mode: int = -1
@@ -56,6 +57,7 @@ elif r < 0.12: t = Terrain.ICE
 elif r < 0.30: t = Terrain.DUST
 else: t = Terrain.REGOLITH
 tiles[Vector2i(x, y)] = t
+detail[Vector2i(x, y)] = rng.randf()
 
 func _spawn_rover(at: Vector2i) -> void:
 var r := Robot.new()
@@ -142,19 +144,35 @@ selected_robot.queue_redraw()
 selected_robot = null
 
 func _draw() -> void:
-var light := clock.day_factor()
-var tint := Color(1, 0.85, 0.7).lerp(Color(0.15, 0.18, 0.30), 1.0 - light)
 for coord in tiles.keys():
 var base: Color = COLORS[tiles[coord]]
-var col := base * tint
+var d: float = detail[coord]
+var col := base * (0.88 + d * 0.24)
 var c := Iso.tile_to_screen(coord.x, coord.y)
 var pts := Iso.tile_diamond(c)
 draw_colored_polygon(pts, col)
-draw_polyline(PackedVector2Array([pts[0], pts[1], pts[2], pts[3], pts[0]]), Color(0, 0, 0, 0.2), 1.0)
+
+# per-type detail
+match tiles[coord]:
+Terrain.ICE:
+draw_polyline(PackedVector2Array([
+pts[0].lerp(pts[1], 0.35) + Vector2(0, 1),
+pts[1].lerp(pts[2], 0.35) + Vector2(0, 1),
+]), Color(1, 1, 1, 0.35), 1.0)
+Terrain.ROCK:
+var mid := (pts[0] + pts[2]) * 0.5
+draw_circle(mid + Vector2(-4, 2), 3.0, col.darkened(0.30))
+draw_circle(mid + Vector2(5, 4), 2.0, col.darkened(0.20))
+_:
+pass
+
+draw_polyline(PackedVector2Array([pts[0], pts[1], pts[2], pts[3], pts[0]]), Color(0, 0, 0, 0.18), 1.0)
+
 if coord == selected:
 var s := Iso.tile_diamond(c)
 draw_polyline(PackedVector2Array([s[0], s[1], s[2], s[3], s[0]]), Color(1, 1, 1, 0.95), 2.0)
-# queued mine markers
+
 for t in tasks.pending_mine:
 var c := Iso.tile_to_screen(t.x, t.y)
 draw_circle(c, 4.0, Color(1, 0.8, 0.2, 0.85))
+draw_arc(c, 6.0, 0, TAU, 12, Color(1, 0.9, 0.4, 0.6), 1.5)
