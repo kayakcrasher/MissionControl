@@ -14,13 +14,17 @@ Terrain.ICE:      Color(0.75, 0.85, 0.95),
 
 @onready var clock: Node = get_node("../Clock")
 @onready var cursor: Node2D = get_node("../Cursor")
+@onready var robots_root: Node2D = get_node("../Robots")
+@onready var camera: Camera2D = get_node("../Camera2D")
 
 var tiles: Dictionary = {}
 var selected: Vector2i = Vector2i(-1, -1)
+var selected_robot: Robot = null
 
 func _ready() -> void:
 _generate()
 clock.hour_changed.connect(_on_hour_changed)
+_spawn_rover(Vector2i(15, 20))
 
 func _generate() -> void:
 var rng := RandomNumberGenerator.new()
@@ -35,16 +39,50 @@ elif r < 0.30: t = Terrain.DUST
 else: t = Terrain.REGOLITH
 tiles[Vector2i(x, y)] = t
 
+func _spawn_rover(at: Vector2i) -> void:
+var r := Robot.new()
+r.set_script(load("res://scripts/entities/rover.gd"))
+robots_root.add_child(r)
+r.setup(at)
+
 func _on_hour_changed(_h: float) -> void:
 queue_redraw()
 
 func _unhandled_input(event: InputEvent) -> void:
 if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 var t := cursor.hovered_tile
-if tiles.has(t):
+var hit := _robot_at_screen(camera.screen_to_world(event.position))
+if hit:
+_select_robot(hit)
+elif tiles.has(t):
 selected = Vector2i(-1, -1) if selected == t else t
 cursor.selected = selected
+_clear_robot_selection()
 queue_redraw()
+
+elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT:
+if selected_robot:
+var t := cursor.hovered_tile
+if tiles.has(t):
+selected_robot.move_to(t, tiles)
+
+func _robot_at_screen(world: Vector2) -> Robot:
+for r in robots_root.get_children():
+if world.distance_to(r.position) <= 14.0:
+return r
+return null
+
+func _select_robot(r: Robot) -> void:
+_clear_robot_selection()
+selected_robot = r
+r.selected = true
+r.queue_redraw()
+
+func _clear_robot_selection() -> void:
+if selected_robot:
+selected_robot.selected = false
+selected_robot.queue_redraw()
+selected_robot = null
 
 func _draw() -> void:
 var light := clock.day_factor()
