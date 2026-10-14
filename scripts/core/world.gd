@@ -12,19 +12,36 @@ Terrain.ROCK:     Color(0.45, 0.20, 0.10),
 Terrain.ICE:      Color(0.75, 0.85, 0.95),
 }
 
+const BUILD_COST := {
+Building.Kind.SOLAR:   {"metal": 15.0, "silicon": 10.0},
+Building.Kind.DRILL:   {"metal": 20.0, "silicon": 5.0},
+Building.Kind.STORAGE: {"metal": 10.0},
+}
+
 @onready var clock: Node = get_node("../Clock")
 @onready var cursor: Node2D = get_node("../Cursor")
 @onready var robots_root: Node2D = get_node("../Robots")
+@onready var buildings_root: Node2D = get_node("../Buildings")
 @onready var camera: Camera2D = get_node("../Camera2D")
+@onready var resources: Node = get_node("../Resources")
+@onready var power: Node = get_node("../Power")
 
 var tiles: Dictionary = {}
 var selected: Vector2i = Vector2i(-1, -1)
 var selected_robot: Robot = null
+var build_mode: int = -1
 
 func _ready() -> void:
 _generate()
 clock.hour_changed.connect(_on_hour_changed)
 _spawn_rover(Vector2i(15, 20))
+# seed resources so we can build a couple of things
+resources.add("metal", 60)
+resources.add("ice", 20)
+resources.add("silicon", 30)
+
+func set_build_mode(mode: int) -> void:
+build_mode = mode
 
 func _generate() -> void:
 var rng := RandomNumberGenerator.new()
@@ -48,10 +65,28 @@ r.setup(at)
 func _on_hour_changed(_h: float) -> void:
 queue_redraw()
 
+func _process(delta: float) -> void:
+power.tick(delta, clock.day_factor())
+_auto_mine(delta)
+
+func _auto_mine(delta: float) -> void:
+# tiny trickle so the sim isn't dead; real mining arrives in M5
+if selected_robot and selected_robot.state == Robot.State.IDLE:
+var t: int = tiles.get(selected_robot.tile, Terrain.REGOLITH)
+match t:
+Terrain.REGOLITH: resources.add("metal", 0.8 * delta)
+Terrain.ROCK:     resources.add("metal", 1.5 * delta)
+Terrain.ICE:      resources.add("ice",   1.2 * delta)
+Terrain.DUST:     resources.add("silicon", 0.6 * delta)
+
 func _unhandled_input(event: InputEvent) -> void:
 if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+var world_pos := camera.screen_to_world(event.position)
 var t := cursor.hovered_tile
-var hit := _robot_at_screen(camera.screen_to_world(event.position))
+var hit := _robot_at_screen(world_pos)
+if build_mode >= 0 and tiles.has(t):
+_try_build(t)
+return
 if hit:
 _select_robot(hit)
 elif tiles.has(t):
@@ -65,6 +100,26 @@ if selected_robot:
 var t := cursor.hovered_tile
 if tiles.has(t):
 selected_robot.move_to(t, tiles)
+
+func _try_build(t: Vector2i) -> void:
+for b in buildings_root.get_children():
+if b.tile == t:
+return
+if not power.has_power(5.0):
+return
+var cost: Dictionary = BUILD_COST[build_mode]
+for k in cost.keys():
+if resources.get_amount(k) < cost[k]:
+return
+for k in cost.keys():
+resources.take(k, cost[k])
+power.consume(5.0)
+var b := Building.new()
+b.set_script(load("res://scripts/entities/building.gd"))
+buildings_root.add_child(b)
+b.setup(build_mode, t)
+power.register(b)
+queue_redraw()
 
 func _robot_at_screen(world: Vector2) -> Robot:
 for r in robots_root.get_children():

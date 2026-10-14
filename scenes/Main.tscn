@@ -1,19 +1,30 @@
-[gd_scene load_steps=6 format=3 uid="uid://mc0001main"]
+[gd_scene load_steps=9 format=3 uid="uid://mc0001main"]
 
 [ext_resource type="Script" path="res://scripts/core/camera.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/core/world.gd" id="2"]
 [ext_resource type="Script" path="res://scripts/ui/cursor.gd" id="3"]
 [ext_resource type="Script" path="res://scripts/core/clock.gd" id="4"]
+[ext_resource type="Script" path="res://scripts/core/resources.gd" id="5"]
+[ext_resource type="Script" path="res://scripts/systems/power.gd" id="6"]
+[ext_resource type="Script" path="res://scripts/ui/hud.gd" id="7"]
 
 [node name="Main" type="Node2D"]
 
 [node name="Clock" type="Node" parent="."]
 script = ExtResource("4")
 
+[node name="Resources" type="Node" parent="."]
+script = ExtResource("5")
+
+[node name="Power" type="Node" parent="."]
+script = ExtResource("6")
+
 [node name="World" type="Node2D" parent="."]
 script = ExtResource("2")
 
 [node name="Robots" type="Node2D" parent="."]
+
+[node name="Buildings" type="Node2D" parent="."]
 
 [node name="Cursor" type="Node2D" parent="."]
 script = ExtResource("3")
@@ -21,3 +32,6 @@ script = ExtResource("3")
 [node name="Camera2D" type="Camera2D" parent="."]
 script = ExtResource("1")
 position = Vector2(0, 400)
+
+[node name="HUD" type="CanvasLayer" parent="."]
+script = ExtResource("7")
