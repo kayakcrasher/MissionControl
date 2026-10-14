@@ -25,6 +25,7 @@ Building.Kind.STORAGE: {"metal": 10.0},
 @onready var camera: Camera2D = get_node("../Camera2D")
 @onready var resources: Node = get_node("../Resources")
 @onready var power: Node = get_node("../Power")
+@onready var tasks: Node = get_node("../Tasks")
 
 var tiles: Dictionary = {}
 var selected: Vector2i = Vector2i(-1, -1)
@@ -35,7 +36,7 @@ func _ready() -> void:
 _generate()
 clock.hour_changed.connect(_on_hour_changed)
 _spawn_rover(Vector2i(15, 20))
-# seed resources so we can build a couple of things
+_spawn_rover(Vector2i(16, 20))
 resources.add("metal", 60)
 resources.add("ice", 20)
 resources.add("silicon", 30)
@@ -67,17 +68,6 @@ queue_redraw()
 
 func _process(delta: float) -> void:
 power.tick(delta, clock.day_factor())
-_auto_mine(delta)
-
-func _auto_mine(delta: float) -> void:
-# tiny trickle so the sim isn't dead; real mining arrives in M5
-if selected_robot and selected_robot.state == Robot.State.IDLE:
-var t: int = tiles.get(selected_robot.tile, Terrain.REGOLITH)
-match t:
-Terrain.REGOLITH: resources.add("metal", 0.8 * delta)
-Terrain.ROCK:     resources.add("metal", 1.5 * delta)
-Terrain.ICE:      resources.add("ice",   1.2 * delta)
-Terrain.DUST:     resources.add("silicon", 0.6 * delta)
 
 func _unhandled_input(event: InputEvent) -> void:
 if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
@@ -99,7 +89,19 @@ elif event is InputEventMouseButton and event.pressed and event.button_index == 
 if selected_robot:
 var t := cursor.hovered_tile
 if tiles.has(t):
+if Input.is_key_pressed(KEY_SHIFT):
+tasks.enqueue_mine(t)
+else:
+tasks.clear(selected_robot)
 selected_robot.move_to(t, tiles)
+
+elif event is InputEventKey and event.pressed and event.keycode == KEY_M:
+if selected_robot:
+tasks.clear(selected_robot)
+var mt := tasks.take_mine()
+if mt == Vector2i(-1, -1):
+mt = selected_robot.tile
+tasks.assign(selected_robot, tasks.Kind.MINE, mt)
 
 func _try_build(t: Vector2i) -> void:
 for b in buildings_root.get_children():
@@ -152,3 +154,7 @@ draw_polyline(PackedVector2Array([pts[0], pts[1], pts[2], pts[3], pts[0]]), Colo
 if coord == selected:
 var s := Iso.tile_diamond(c)
 draw_polyline(PackedVector2Array([s[0], s[1], s[2], s[3], s[0]]), Color(1, 1, 1, 0.95), 2.0)
+# queued mine markers
+for t in tasks.pending_mine:
+var c := Iso.tile_to_screen(t.x, t.y)
+draw_circle(c, 4.0, Color(1, 0.8, 0.2, 0.85))

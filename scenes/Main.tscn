@@ -1,4 +1,4 @@
-[gd_scene load_steps=9 format=3 uid="uid://mc0001main"]
+[gd_scene load_steps=10 format=3 uid="uid://mc0001main"]
 
 [ext_resource type="Script" path="res://scripts/core/camera.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/core/world.gd" id="2"]
@@ -7,6 +7,8 @@
 [ext_resource type="Script" path="res://scripts/core/resources.gd" id="5"]
 [ext_resource type="Script" path="res://scripts/systems/power.gd" id="6"]
 [ext_resource type="Script" path="res://scripts/ui/hud.gd" id="7"]
+[ext_resource type="Script" path="res://scripts/systems/tasks.gd" id="8"]
+[ext_resource type="Script" path="res://scripts/systems/colony.gd" id="9"]
 
 [node name="Main" type="Node2D"]
 
@@ -18,6 +20,12 @@ script = ExtResource("5")
 
 [node name="Power" type="Node" parent="."]
 script = ExtResource("6")
+
+[node name="Tasks" type="Node" parent="."]
+script = ExtResource("8")
+
+[node name="Colony" type="Node" parent="."]
+script = ExtResource("9")
 
 [node name="World" type="Node2D" parent="."]
 script = ExtResource("2")

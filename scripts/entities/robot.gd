@@ -1,7 +1,7 @@
 class_name Robot
 extends Node2D
 
-enum State { IDLE, MOVING }
+enum State { IDLE, MOVING, WORKING }
 
 var tile: Vector2i = Vector2i(0, 0)
 var state: int = State.IDLE
@@ -13,6 +13,9 @@ var selected := false
 var body_color := Color(0.9, 0.8, 0.2)
 var outline_color := Color(0.1, 0.1, 0.1)
 
+var carry := 0.0
+var carry_kind := ""
+
 func setup(start_tile: Vector2i) -> void:
 tile = start_tile
 position = Iso.tile_to_screen(tile.x, tile.y)
@@ -20,11 +23,17 @@ position = Iso.tile_to_screen(tile.x, tile.y)
 func move_to(target: Vector2i, tiles: Dictionary) -> void:
 path = Pathfinding.find_path(tile, target, tiles)
 _move_progress = 0.0
-state = State.MOVING if not path.is_empty() else State.IDLE
+if path.is_empty():
+state = State.IDLE
+else:
+state = State.MOVING
 queue_redraw()
 
+func at_target() -> bool:
+return state == State.IDLE
+
 func _process(delta: float) -> void:
-if state != State.MOVING: return
+if state == State.MOVING:
 _move_progress += delta * speed_tiles_per_sec
 while _move_progress >= 1.0 and not path.is_empty():
 _move_progress -= 1.0
@@ -46,5 +55,7 @@ func _draw() -> void:
 var r := 10.0
 draw_circle(Vector2.ZERO, r, body_color)
 draw_arc(Vector2.ZERO, r, 0, TAU, 24, outline_color, 2.0)
+if carry > 0.0:
+draw_circle(Vector2(0, -r - 4), 3.0, Color(0.9, 0.9, 0.9))
 if selected:
 draw_arc(Vector2.ZERO, r + 6, 0, TAU, 32, Color(1, 1, 1, 0.95), 2.0)

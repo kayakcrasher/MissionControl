@@ -6,6 +6,8 @@ var build_mode: int = -1
 @onready var world: Node2D = get_node("../World")
 @onready var resources: Node = get_node("../Resources")
 @onready var power: Node = get_node("../Power")
+@onready var tasks: Node = get_node("../Tasks")
+@onready var clock: Node = get_node("../Clock")
 
 func _ready() -> void:
 label = Label.new()
@@ -16,32 +18,31 @@ label.add_theme_constant_override("outline_size", 4)
 add_child(label)
 
 var hint := Label.new()
-hint.position = Vector2(16, 96)
-hint.text = "LMB select robot/tile | RMB move rover\n1 Solar  2 Drill  3 Storage  |  B place  ESC cancel"
+hint.position = Vector2(16, 108)
+hint.text = "LMB select | RMB move rover | Shift+RMB queue mine | M mine now\n1 Solar  2 Drill  3 Storage  |  ESC cancel"
 hint.add_theme_color_override("font_color", Color(1, 1, 1, 0.7))
 hint.add_theme_color_override("font_outline_color", Color(0, 0, 0))
 hint.add_theme_constant_override("outline_size", 3)
 add_child(hint)
 
-resources.changed.connect(_refresh)
-power.changed.connect(_refresh)
-_refresh()
-
-func _process(_d: float) -> void:
+resources.changed.connect(_update_label)
+power.changed.connect(_update_label)
+tasks.changed.connect(_update_label)
 _update_label()
 
-func _refresh() -> void:
+func _process(_d: float) -> void:
 _update_label()
 
 func _update_label() -> void:
 var r = resources.stock
 var p = power.battery
-label.text = "Sol %d  %02d:%02d\nMetal %d  Ice %d  Silicon %d\nPower %.0f/%.0f%s" % [
-get_node("../Clock").sol,
-int(get_node("../Clock").hour),
-int(fmod(get_node("../Clock").hour, 1.0) * 60),
+label.text = "Sol %d  %02d:%02d\nMetal %d  Ice %d  Silicon %d\nPower %.0f/%.0f\nQueue: mine %d  haul %d%s" % [
+clock.sol,
+int(clock.hour),
+int(fmod(clock.hour, 1.0) * 60),
 int(r.metal), int(r.ice), int(r.silicon),
 p, power.battery_capacity,
+tasks.pending_mine.size(), tasks.pending_haul.size(),
 "  [BUILD: %s]" % _build_name() if build_mode >= 0 else "",
 ]
 
