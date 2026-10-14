@@ -6,7 +6,6 @@ extends Camera2D
 @export var zoom_max := 3.0
 
 var _dragging := false
-var _drag_last := Vector2.ZERO
 
 func _process(delta: float) -> void:
 var dir := Vector2.ZERO
@@ -25,14 +24,17 @@ elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
 _zoom(zoom_step)
 elif event.button_index == MOUSE_BUTTON_MIDDLE or event.button_index == MOUSE_BUTTON_RIGHT:
 _dragging = event.pressed
-_drag_last = event.position
-
 elif event is InputEventMouseMotion and _dragging:
 position -= event.relative / zoom
-
 elif event is InputEventScreenDrag:
 position -= event.relative / zoom
 
-func _zoom(delta_z: float) -> void:
-var z := clampf(zoom.x + delta_z, zoom_min, zoom_max)
+func _zoom(d: float) -> void:
+var z := clampf(zoom.x + d, zoom_min, zoom_max)
 zoom = Vector2(z, z)
+
+func screen_to_world(screen: Vector2) -> Vector2:
+return get_canvas_transform().affine_inverse() * screen
+
+func hovered_tile() -> Vector2i:
+return Iso.screen_to_tile(screen_to_world(get_viewport().get_mouse_position()))
